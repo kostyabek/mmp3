@@ -1,6 +1,7 @@
 import tkinter as tk
 import random
 import pygame
+import tkinter.ttk as ttk
 
 
 class PlaybackControls:
@@ -69,10 +70,23 @@ class PlaybackControls:
                                     activebackground="#2B2B2B",
                                     borderwidth=0,
                                     command=self.repeat_switch)
+        # self.scaleStyle = ttk.Style()
+        # self.__configure_scale_style()
+        self.slider_song = ttk.Scale(self.controlsFrame,
+                                     length=300,
+                                     # style='songSlider.Horizontal.TScale',
+                                     from_=0,
+                                     to=100,
+                                     orient=tk.HORIZONTAL,
+                                     value=0,
+                                     command=self.change_song_position)
 
         self.__bind_events_to_buttons()
         self.__place_frame()
-        self.__place_buttons()
+        self.__place_controls()
+
+    def __configure_scale_style(self):
+        self.scaleStyle.configure("songSlider.Horizontal.TScale", background='#FFDB00')
 
     def __bind_events_to_buttons(self):
         self.btn_prev.bind("<Enter>", lambda event, image=self.img_prev_hover: self.__on_enter(e=event, image=image))
@@ -102,7 +116,7 @@ class PlaybackControls:
     def __place_frame(self):
         self.controlsFrame.grid(row=1, column=0, sticky="w")
 
-    def __place_buttons(self):
+    def __place_controls(self):
         self.btn_prev.grid(row=0, column=0, padx=(0, 15))
 
         # Remembering pause button's position
@@ -113,6 +127,8 @@ class PlaybackControls:
         self.btn_next.grid(row=0, column=4, padx=(15, 0))
         self.btn_shuffle.grid(row=0, column=5, ipadx="2px", padx=("20px", 0))
         self.btn_repeat.grid(row=0, column=6, ipadx="2px")
+
+        self.slider_song.grid(row=1, column=0, columnspan=5)
 
     def play_song(self):
         self.controlsFrame.after(50, self.__wait_for_song_to_end)
@@ -127,6 +143,8 @@ class PlaybackControls:
         pygame.mixer.music.load(self.songsBox.currentSongFullPath)
         self.isSongLoaded = True
         self.songMetadata.read_song_metadata(self.songsBox.currentSongFullPath)
+        self.update_slider_config()
+        self.update_slider_position()
         pygame.mixer.music.play(loops=0)
 
     def __check_if_song_is_paused(self):
@@ -266,6 +284,26 @@ class PlaybackControls:
             self.btn_repeat.bind("<Enter>", lambda event, image=self.img_repeat_active_hover: self.__on_enter(e=event, image=image))
             self.btn_repeat.bind("<Leave>", lambda event, image=self.img_repeat_active: self.__on_leave(e=event, image=image))
             self.isSongOnRepeat = True
+
+    def change_song_position(self, x):
+        self.songMetadata.raw_playtime_to_formatted(self.slider_song.get())
+
+    def update_slider_position(self):
+        print(str(int(self.slider_song.get())) + '|' + str(int(self.songMetadata.songRawPlaytime)))
+
+        if int(self.slider_song.get()) == int(self.songMetadata.songRawPlaytime):
+            self.slider_song.config(value=self.songMetadata.songRawPlaytime + 0.25)
+        else:
+            self.songMetadata.songTimeLabel.after_cancel(self.songMetadata.songTimeDataFlag)
+            self.songMetadata.wasSliderUsed = True
+            pygame.mixer.music.play(loops=0, start=self.slider_song.get())
+            print("------------------------------")
+            self.songMetadata.get_song_playtime(playtime_from_slider=self.slider_song.get())
+
+        self.slider_song.after(250, self.update_slider_position)
+
+    def update_slider_config(self):
+        self.slider_song.config(to=self.songMetadata.songRawLength)
 
     def __song_path_to_name(self, song_path):
         return song_path[song_path.rfind("/") + 1:]

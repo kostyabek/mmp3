@@ -6,16 +6,16 @@ import io
 import time
 import pygame
 
-# 19.03 Complete song length and duration functionality
 
 class SongMetadata:
     def __init__(self, top_frame, right_side_frame, songs_box):
         self.songsBox = songs_box
         self.songTag = None
         self.songFullTitle = ""
-        self.songPlaytime = None
-        self.songLength = None
+        self.songRawPlaytime = 0
+        self.songFormattedPlaytime = None
         self.songRawLength = 0
+        self.songFormattedLength = None
 
         self.coverImagePlaceholder = self.__prepare_cover_image_placeholder()
         self.coverRawImage = None
@@ -30,6 +30,7 @@ class SongMetadata:
         self.songNameCycleFlag = 0
         self.songTimeDataFlag = 0
         self.wasLongTitle = False
+        self.wasSliderUsed = False
 
     def __prepare_cover_image_placeholder(self):
         cover_raw_image = Image.open("../img/cover placeholder.png")
@@ -94,26 +95,34 @@ class SongMetadata:
             return False
         return True
 
-    def get_song_playtime(self):
-        song_raw_playtime = pygame.mixer.music.get_pos() / 1000
-        if self.songRawLength > 3600:
-            self.songPlaytime = time.strftime("%H:%M:%S", time.gmtime(song_raw_playtime))
-        else:
-            self.songPlaytime = time.strftime("%M:%S", time.gmtime(song_raw_playtime))
-        self.update_song_playtime_label()
-        self.songTimeDataFlag = self.songTimeLabel.after(100, self.get_song_playtime)
-
-    def update_song_playtime_label(self):
-        if pygame.mixer.music.get_busy():
-            self.songTimeLabel.configure(text=self.songPlaytime + "/" + self.songLength)
-
     def get_song_length(self):
         song_mutagen = mtg.MP3(self.songsBox.currentSongFullPath)
         self.songRawLength = song_mutagen.info.length
         if self.songRawLength > 3600:
-            self.songLength = time.strftime("%H:%M:%S", time.gmtime(self.songRawLength))
+            self.songFormattedLength = time.strftime("%H:%M:%S", time.gmtime(self.songRawLength))
             return
-        self.songLength = time.strftime("%M:%S", time.gmtime(self.songRawLength))
+        self.songFormattedLength = time.strftime("%M:%S", time.gmtime(self.songRawLength))
+
+    def get_song_playtime(self, playtime_from_slider=5):
+        if not self.wasSliderUsed:
+            self.songRawPlaytime = pygame.mixer.music.get_pos() / 1000
+        else:
+            print("USED")
+            self.songRawPlaytime = playtime_from_slider
+        self.raw_playtime_to_formatted(self.songRawPlaytime)
+
+        self.update_song_playtime_label()
+        self.songTimeDataFlag = self.songTimeLabel.after(250, self.get_song_playtime)
+
+    def raw_playtime_to_formatted(self, playtime):
+        if self.songRawLength > 3600:
+            self.songFormattedPlaytime = time.strftime("%H:%M:%S", time.gmtime(playtime))
+        else:
+            self.songFormattedPlaytime = time.strftime("%M:%S", time.gmtime(playtime))
+
+    def update_song_playtime_label(self):
+        if pygame.mixer.music.get_busy():
+            self.songTimeLabel.configure(text=self.songFormattedPlaytime + "/" + self.songFormattedLength)
 
     def clear_song_metadata(self):
         self.coverLabel.configure(image=self.coverImagePlaceholder)
@@ -122,5 +131,5 @@ class SongMetadata:
         self.songFullTitle = ""
         self.songTag = None
         self.coverRawImage = None
-        self.songPlaytime = None
-        self.songLength = None
+        self.songFormattedPlaytime = None
+        self.songFormattedLength = None
