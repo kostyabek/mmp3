@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+import random
 
 
 class SongsBox:
@@ -82,14 +83,21 @@ class SongsBox:
         e.widget['image'] = image
 
     def __bind_events_to_songs_list(self):
-        self.songsList.bind("<<ListboxSelect>>", self.__update_current_song_index)
-        self.songsList.bind("<Double-1>", self.__play_selected_song)
-
-    def __update_current_song_index(self, e):
-        self.currentSongIndex = e.widget.curselection()[0]
+        self.songsList.bind("<ButtonRelease-1>", self.__play_selected_song)
 
     def __play_selected_song(self, e):
-        pass
+        self.playbackControls.execute_preparation_actions_before_playing()
+
+        self.currentSongIndex = e.widget.curselection()[0]
+        self.__get_current_song_full_path()
+        self.playbackControls.play_selected_song()
+
+    def __get_current_song_full_path(self):
+        for path in SongsBox.songsFullPath:
+            if path.find(self.songsList.get(self.currentSongIndex)) != -1:
+                self.currentSongFullPath = path
+                print(self.currentSongFullPath)
+                break
 
     def __place_buttons(self):
         self.btn_add_songs.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
@@ -109,8 +117,8 @@ class SongsBox:
             songs_name_only = [name[name.rfind("/") + 1:-4] for name in songs_new]
             self.songsList.insert(tk.END, *songs_name_only)
             self.songsListSize += len(songs_new)
-            self.songsList.activate(0)
-            self.songsList.selection_set(0)
+            # self.songsList.activate(0)
+            # self.songsList.selection_set(0)
 
     def clear_songs_list(self):
         self.songsList.delete(0, tk.END)
@@ -120,6 +128,25 @@ class SongsBox:
 
         self.playbackControls.clear_playback()
         self.playbackControls.place_play_button()
+
+    def shuffle_songs(self):
+        songs_full_paths_list = list(SongsBox.songsFullPath)
+
+        random.shuffle(songs_full_paths_list)
+
+        if self.playbackControls.isSongLoaded:
+            songs_full_paths_list.remove(self.currentSongFullPath)
+            songs_full_paths_list.insert(0, self.currentSongFullPath)
+            self.currentSongIndex = 0
+
+        self.songsFullPath = tuple(songs_full_paths_list)
+
+        songs_names_list = [name[name.rfind("/") + 1:-4] for name in songs_full_paths_list]
+
+        self.songsList.delete(0, tk.END)
+        self.songsList.insert(tk.END, *songs_names_list)
+
+        self.playbackControls.select_current_index()
 
     def enter_song_removing_mode(self):
         # self.removingSongs = True
