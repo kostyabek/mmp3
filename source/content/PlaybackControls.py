@@ -16,6 +16,7 @@ class PlaybackControls:
 
         self.isSongEndedFlag = None
         self.sliderUpdateFlag = None
+        self.buttonStateChangerFlag = None
 
         self.savedNewSongPosition = -1
 
@@ -31,6 +32,7 @@ class PlaybackControls:
         self.gui.slider_song.config(state=tk.NORMAL)
         self.songMetadata.wasSliderUsed = True
         self.songMetadata.song_playtime_counter(playtime_from_slider=new_position)
+        self.__cycle_update_slider_position()
         if self.isSongPaused:
             self.savedNewSongPosition = new_position
             return
@@ -43,7 +45,7 @@ class PlaybackControls:
         self.gui.btn_pause.config(command=self.pause_song)
         self.gui.btn_next.config(command=self.next_song)
         self.gui.btn_repeat.config(command=self.repeat_switch)
-        self.gui.slider_song.config(command=self.change_song_position)
+        self.gui.slider_song.config(command=self.change_song_position_on_slide)
 
     def prev_song(self):
         if self.songsBox.songsListSize > 1 and self.songsBox.currentSongIndex > 0:
@@ -66,13 +68,10 @@ class PlaybackControls:
                     pygame.mixer.music.play(loops=0)
 
     def execute_preparation_actions_before_playing(self):
-        if self.sliderUpdateFlag:
-            self.gui.slider_song.after_cancel(self.sliderUpdateFlag)
-
-        # self.songMetadata.clear_song_metadata()
+        self.stop_slider_update_cycle()
 
         self.update_slider_bound()
-        self.songMetadata.reset_playtime()
+        self.songMetadata.set_playtime_to_zero()
         self.reset_slider_position()
 
     def update_slider_bound(self):
@@ -86,7 +85,7 @@ class PlaybackControls:
             self.songMetadata.song_playtime_counter()
             self.gui.slider_song.config(value=self.songMetadata.songRawPlaytime)
 
-        self.sliderUpdateFlag = self.gui.slider_song.after(250, self.__cycle_update_slider_position)
+        self.sliderUpdateFlag = self.gui.master.after(250, self.__cycle_update_slider_position)
 
     def resume_pause_playback(self):
         if self.__check_if_song_is_paused():
@@ -105,7 +104,7 @@ class PlaybackControls:
         self.gui.btn_play.grid_remove()
         self.gui.btn_pause.grid()
 
-        self.gui.controlsFrame.after(50, self.__cycle_wait_for_song_to_end)
+        self.gui.master.after(50, self.__cycle_wait_for_song_to_end)
 
         self.__cycle_update_slider_position()
 
@@ -120,14 +119,11 @@ class PlaybackControls:
         for event in pygame.event.get():
             if event.type == self.SONG_END:
                 self.__autoplay_next_song()
-                self.select_current_index()
-                self.gui.controlsFrame.after_cancel(self.isSongEndedFlag)
-        self.isSongEndedFlag = self.gui.controlsFrame.after(50, self.__cycle_wait_for_song_to_end)
+                self.songsBox.select_current_index()
+                self.stop_wait_for_song_to_end_cycle()
+        self.isSongEndedFlag = self.gui.master.after(50, self.__cycle_wait_for_song_to_end)
 
-    def select_current_index(self):
-        self.gui.songsList.selection_clear(0, tk.END)
-        self.gui.songsList.activate(self.songsBox.currentSongIndex)
-        self.gui.songsList.selection_set(self.songsBox.currentSongIndex)
+
 
     def __autoplay_next_song(self):
         if self.isSongOnRepeat:
@@ -146,7 +142,7 @@ class PlaybackControls:
 
             self.reset_slider_position()
             self.update_slider_bound()
-            self.songMetadata.reset_playtime()
+            self.songMetadata.set_playtime_to_zero()
 
             pygame.mixer.music.load(next_song)
             pygame.mixer.music.play(loops=0)
@@ -164,7 +160,7 @@ class PlaybackControls:
     def pause_song(self):
         if pygame.mixer.music.get_busy():
             self.isSongPaused = True
-            self.gui.slider_song.after_cancel(self.sliderUpdateFlag)
+            self.stop_slider_update_cycle()
             pygame.mixer.music.pause()
 
             self.gui.btn_pause.grid_remove()
@@ -193,7 +189,7 @@ class PlaybackControls:
     def __load_new_song(self, song):
         self.songsBox.currentSongFullPath = song
 
-        self.select_current_index()
+        self.songsBox.select_current_index()
 
         self.songMetadata.read_song_metadata(self.songsBox.currentSongFullPath)
 
@@ -218,35 +214,36 @@ class PlaybackControls:
                                                                                                               image=image))
         self.isSongOnRepeat = True
 
-    def change_song_position(self, x):
+    def change_song_position_on_slide(self, x):
+        self.stop_slider_update_cycle()
         self.songMetadata.wasSliderUsed = True
         self.songMetadata.update_playtime_on_slide(self.gui.slider_song.get())
-        self.gui.slider_song.config(state=tk.ACTIVE)
 
     def __cycle_button_state_changer(self):
         if self.isSongLoaded:
-            if self.songsBox.check_if_song_is_borderline() == -1:
-                self.gui.btn_next.config(state=tk.DISABLED)
-                self.gui.btn_prev.config(state=tk.DISABLED)
-
-            if self.songsBox.check_if_song_is_borderline() == 0:
-                self.gui.btn_prev.config(state=tk.DISABLED)
-            else:
-                self.gui.btn_prev.config(state=tk.NORMAL)
-
-            if self.songsBox.check_if_song_is_borderline() == 1:
-                self.gui.btn_next.config(state=tk.DISABLED)
-            else:
-                self.gui.btn_next.config(state=tk.NORMAL)
-
             self.gui.btn_play.config(state=tk.NORMAL)
             self.gui.btn_shuffle.config(state=tk.NORMAL)
             self.gui.btn_repeat.config(state=tk.NORMAL)
             self.gui.slider_song.config(state=tk.NORMAL)
+
+            if self.songsBox.check_if_song_is_borderline() == -1:
+                self.gui.btn_next.config(state=tk.DISABLED)
+                self.gui.btn_prev.config(state=tk.DISABLED)
+
+            elif self.songsBox.check_if_song_is_borderline() == 0:
+                self.gui.btn_prev.config(state=tk.DISABLED)
+                self.gui.btn_next.config(state=tk.NORMAL)
+
+            elif self.songsBox.check_if_song_is_borderline() == 1:
+                self.gui.btn_prev.config(state=tk.NORMAL)
+                self.gui.btn_next.config(state=tk.DISABLED)
+            else:
+                self.gui.btn_prev.config(state=tk.NORMAL)
+                self.gui.btn_next.config(state=tk.NORMAL)
         else:
             self.__disable_all_controls()
 
-        self.gui.controlsFrame.after(250, self.__cycle_button_state_changer)
+        self.buttonStateChangerFlag = self.gui.master.after(250, self.__cycle_button_state_changer)
 
     def __disable_all_controls(self):
         self.gui.btn_prev.config(state=tk.DISABLED)
@@ -282,10 +279,22 @@ class PlaybackControls:
     def clear_playback(self):
         pygame.mixer.music.unload()
         self.isSongLoaded = False
+
         if self.isSongOnRepeat:
             self.repeat_switch()
 
         self.reset_slider_position()
+
+        self.stop_slider_update_cycle()
+        self.stop_wait_for_song_to_end_cycle()
+
+    def stop_slider_update_cycle(self):
+        if self.sliderUpdateFlag:
+            self.gui.master.after_cancel(self.sliderUpdateFlag)
+
+    def stop_wait_for_song_to_end_cycle(self):
+        if self.isSongEndedFlag:
+            self.gui.master.after_cancel(self.isSongEndedFlag)
 
     def __song_path_to_name(self, song_path):
         return song_path[song_path.rfind("/") + 1:]
@@ -295,3 +304,11 @@ class PlaybackControls:
 
     def get_song_metadata_reference(self, song_metadata_object):
         self.songMetadata = song_metadata_object
+
+    def cancel_all_cycles(self):
+        if self.sliderUpdateFlag is not None:
+            self.gui.master.after_cancel(self.sliderUpdateFlag)
+        if self.isSongEndedFlag is not None:
+            self.gui.master.after_cancel(self.isSongEndedFlag)
+        if self.buttonStateChangerFlag is not None:
+            self.gui.master.after_cancel(self.buttonStateChangerFlag)

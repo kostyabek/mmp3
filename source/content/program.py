@@ -1,12 +1,15 @@
 import pygame
+import atexit
 import source.content.GUI as GUI
 import source.content.SongMetadata as SongMetadata
 import source.content.PlaybackControls as PlaybackControls
 import source.content.SongsBox as SongsBox
+import source.content.About as About
 
 
 class Program:
     def __init__(self, master):
+        atexit.register(self.__prepare_to_exit)
         pygame.init()
         self.gui = GUI.GUI(master)
 
@@ -21,3 +24,10 @@ class Program:
 
         self.playbackControls.get_songs_box_reference(self.songsBox)
         self.playbackControls.get_song_metadata_reference(self.currentSongMetadata)
+
+        self.about = About.About(master, bg=self.gui.backgroundColor)
+
+    def __prepare_to_exit(self):
+        self.currentSongMetadata.cancel_all_cycles()
+        self.playbackControls.cancel_all_cycles()
+

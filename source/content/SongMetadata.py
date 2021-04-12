@@ -19,15 +19,12 @@ class SongMetadata:
 
         self.coverRawImage = None
 
-        self.songNameCycleFlag = 0
-        self.songTimeDataFlag = 0
+        self.songNameCycleFlag = None
         self.wasLongTitle = False
         self.wasSliderUsed = False
 
     def read_song_metadata(self, song_full_path):
-        if self.wasLongTitle:
-            self.gui.songNameLabel.after_cancel(self.songNameCycleFlag)
-
+        self.stop_song_title_cycle()
         try:
             self.songTag = stg.read_tag(song_full_path)
         except stg.errors.NoTagError:
@@ -42,6 +39,10 @@ class SongMetadata:
         self.__get_song_cover_image()
         self.get_song_length()
 
+    def stop_song_title_cycle(self):
+        if self.wasLongTitle:
+            self.gui.master.after_cancel(self.songNameCycleFlag)
+
     def __build_song_full_title(self, artist, name):
         if self.__check_if_tag_title_not_empty():
             return artist + " - " + name + "  "
@@ -55,7 +56,7 @@ class SongMetadata:
 
     def __start_song_title_cycler(self):
         self.wasLongTitle = True
-        self.songNameCycleFlag = self.gui.songNameLabel.after(1000, self.__cycle_spin_song_full_title)
+        self.songNameCycleFlag = self.gui.master.after(1000, self.__cycle_spin_song_full_title)
 
     def __cycle_spin_song_full_title(self):
         if len(self.songFullTitle) > 25:
@@ -63,7 +64,7 @@ class SongMetadata:
 
             self.gui.songNameLabel.configure(text=self.songFullTitle)
 
-            self.gui.songNameLabel.after(1000, self.__cycle_spin_song_full_title)
+            self.gui.master.after(1000, self.__cycle_spin_song_full_title)
 
     def __get_song_cover_image(self):
         if not self.__check_if_tag_has_image():
@@ -125,11 +126,18 @@ class SongMetadata:
         self.coverRawImage = None
         self.songFormattedPlaytime = None
         self.songFormattedLength = None
-        self.reset_playtime()
         self.songRawLength = 0
 
-    def reset_playtime(self):
+        self.set_playtime_to_zero()
+
+        self.stop_song_title_cycle()
+
+    def set_playtime_to_zero(self):
         self.songRawPlaytime = 0
 
     def get_songs_box_reference(self, songs_box_object):
         self.songsBox = songs_box_object
+
+    def cancel_all_cycles(self):
+        if self.songNameCycleFlag is not None:
+            self.gui.master.after_cancel(self.songNameCycleFlag)
