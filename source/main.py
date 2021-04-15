@@ -1,15 +1,15 @@
 import tkinter as tk
+import source.content.GUI as GUI
 from source.content import program
 
 
 def main():
-    # Defining our root window
     master = tk.Tk()
     master.title("MMP3 - Mini MP3 Player")
     # root.iconbitmap("")
     master.geometry("480x640")
     master.resizable(False, False)
-    master.config(bg="#2B2B2B")
+    master.config(bg=GUI.GUI.backgroundColor)
 
     window = program.Program(master)
 

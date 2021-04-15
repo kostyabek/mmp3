@@ -7,10 +7,11 @@ class GUI:
     backgroundColor = "#2B2B2B"
     songsListBackgroundColor = "#3C3F41"
     foregroundColor = "#BBBBBB"
-    
+    foregroundActiveColor = "#F0F0F0"
+
     def __init__(self, master):
         self.master = master
-        
+
         # Defining top frame
         self.topFrame = tk.Frame(master, background=GUI.backgroundColor) # red
         self.topFrame.grid(row=0, column=0, sticky="nswe")
@@ -29,7 +30,7 @@ class GUI:
 
         # Defining bottom buttons frame
         self.bottomButtonsFrame = tk.Frame(master, background=GUI.backgroundColor)
-        self.bottomButtonsFrame.grid(row=2, column=0)
+        self.bottomButtonsFrame.grid(row=2, column=0, sticky="nswe")
 
 
         # Stretching by columns
@@ -101,15 +102,28 @@ class GUI:
                                     activebackground=GUI.backgroundColor,
                                     borderwidth=0)
 
+        # Creating custom slider
+        self.img_slider = tk.PhotoImage('self.img_slider', width=7, height=20, master=master)
+        self.__create_img_from_pixels(self.img_slider, GUI.foregroundColor)
 
+        self.img_slider_active = tk.PhotoImage('self.img_slider_active', width=7, height=20, master=master)
+        self.__create_img_from_pixels(self.img_slider_active, GUI.foregroundActiveColor)
 
         self.style = ttk.Style(master)
-        self.style.configure('SongSlider.Horizontal.TScale',
-                             background=GUI.backgroundColor,
-                             trough="red")
+        self.style.element_create('custom.Horizontal.Scale.slider', 'image', self.img_slider,
+                                 ('active', self.img_slider_active))
+
+        self.style.layout('custom.Horizontal.TScale',
+                          [('Horizontal.Scale.trough',
+                            {'expand': '1', 'sticky': 'we',
+                             'children': [('Horizontal.Scale.track', {'sticky': 'we'}),
+                                          ('custom.Horizontal.Scale.slider', {'side': 'left', 'sticky': ''})]})])
+
+        self.style.configure('custom.Horizontal.TScale', background=GUI.backgroundColor)
+
         self.slider_song = ttk.Scale(self.rightSideFrame,
                                      length=300,
-                                     style='SongSlider.Horizontal.TScale',
+                                     style='custom.Horizontal.TScale',
                                      from_=0,
                                      to=100,
                                      orient=tk.HORIZONTAL,
@@ -169,18 +183,21 @@ class GUI:
 
         self.btn_add_songs = tk.Button(self.bottomButtonsFrame,
                                        image=self.img_add_songs,
-                                       bg=GUI.songsListBackgroundColor,
+                                       bg=GUI.backgroundColor,
+                                       activebackground=GUI.backgroundColor,
                                        relief=tk.GROOVE,
                                        bd=0)
 
         self.btn_enter_song_removing_mode = tk.Button(self.bottomButtonsFrame,
                                                       image=self.img_enter_song_removing_mode,
-                                                      bg=GUI.songsListBackgroundColor,
+                                                      bg=GUI.backgroundColor,
+                                                      activebackground=GUI.backgroundColor,
                                                       relief=tk.GROOVE,
                                                       bd=0)
         self.btn_remove_selected_songs = tk.Button(self.bottomButtonsFrame,
                                                    image=self.img_remove_selected_songs,
-                                                   bg=GUI.songsListBackgroundColor,
+                                                   bg=GUI.backgroundColor,
+                                                   activebackground=GUI.backgroundColor,
                                                    relief=tk.GROOVE,
                                                    state=tk.DISABLED,
                                                    bd=0)
@@ -221,6 +238,22 @@ class GUI:
         self.btn_remove_selected_songs.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
         self.btn_shuffle.grid(row=0, column=3, ipadx="2px", padx=("20px", 0))
 
+        # About button
+        self.img_about = tk.PhotoImage(file="../img/icons/about.png")
+        self.img_about_hover = tk.PhotoImage(file="../img/icons/about(hover).png")
+
+        self.btn_show_about = tk.Button(self.bottomButtonsFrame,
+                                        image=self.img_about,
+                                        bg=GUI.backgroundColor,
+                                        activebackground=GUI.backgroundColor,
+                                        relief=tk.GROOVE,
+                                        bd=0)
+
+        self.btn_show_about.bind("<Enter>",
+                                 lambda event, image=self.img_about_hover: self.on_enter(e=event, image=image))
+        self.btn_show_about.bind("<Leave>", lambda event, image=self.img_about: self.on_leave(e=event, image=image))
+        self.btn_show_about.pack(side=tk.RIGHT, ipadx="1px", ipady="2px")
+
     def __prepare_cover_image_placeholder(self):
         cover_raw_image = Image.open("../img/cover placeholder.png")
         cover_raw_image = cover_raw_image.resize((150, 150), Image.ANTIALIAS)
@@ -241,3 +274,8 @@ class GUI:
         self.btn_pause.grid_remove()
 
         self.btn_play.grid()
+
+    def __create_img_from_pixels(self, img, color):
+        pixel_line = "{" + " ".join(color for i in range(img.width())) + "}"
+        pixels = " ".join(pixel_line for i in range(img.height()))
+        img.put(pixels)

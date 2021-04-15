@@ -25,6 +25,9 @@ class Program:
         self.playbackControls.get_songs_box_reference(self.songsBox)
         self.playbackControls.get_song_metadata_reference(self.currentSongMetadata)
 
+        self.gui.btn_show_about.config(command=lambda: self.__show_about(master))
+
+    def __show_about(self, master):
         self.about = About.About(master, bg=self.gui.backgroundColor)
 
     def __prepare_to_exit(self):

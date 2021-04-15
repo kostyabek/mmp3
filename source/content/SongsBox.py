@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog
+import source.content.GUI as GUI
 import random
 
 
@@ -108,7 +109,7 @@ class SongsBox:
             self.gui.songsList.config(selectmode=tk.BROWSE)
             self.__bind_songs_box_event()
 
-            self.gui.btn_enter_song_removing_mode.config(bg="#3C3F41")
+            self.gui.btn_enter_song_removing_mode.config(bg=GUI.GUI.backgroundColor)
             self.gui.btn_remove_selected_songs.config(state=tk.DISABLED)
 
     def __remove_selected_songs(self):
