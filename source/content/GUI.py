@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 from PIL import Image, ImageTk
+from pathlib import Path
 
 
 class GUI:
@@ -11,6 +12,16 @@ class GUI:
 
     def __init__(self, master):
         self.master = master
+
+        self.master.title("MMP3 - Mini MP3-Player")
+
+        self.iconpath = Path("../img/icons/logo.png")
+        self.icon_img = tk.PhotoImage(file=self.iconpath)
+        master.iconphoto(True, self.icon_img)
+
+        self.master.geometry("480x640")
+        self.master.resizable(False, False)
+        self.master.config(bg=GUI.backgroundColor)
 
         # Defining top frame
         self.topFrame = tk.Frame(master, background=GUI.backgroundColor) # red
@@ -24,14 +35,17 @@ class GUI:
         self.controlsFrame = tk.Frame(self.rightSideFrame, background=GUI.backgroundColor) # no color
         self.controlsFrame.grid(row=1, column=0, sticky="w")
 
+        # Volume level slider frame
+        self.volumeFrame = tk.Frame(self.topFrame, background=GUI.backgroundColor)
+        self.volumeFrame.grid(row=0, column=2, padx=5)
+
         # Defining bottom frame
         self.songsListFrame = tk.Frame(master, background=GUI.backgroundColor) # blue
         self.songsListFrame.grid(row=1, column=0, sticky="nswe")
 
         # Defining bottom buttons frame
-        self.bottomButtonsFrame = tk.Frame(master, background=GUI.backgroundColor)
-        self.bottomButtonsFrame.grid(row=2, column=0, sticky="nswe")
-
+        self.footerFrame = tk.Frame(master, background=GUI.backgroundColor)
+        self.footerFrame.grid(row=2, column=0, sticky="nswe")
 
         # Stretching by columns
         master.grid_columnconfigure(0, weight=1)
@@ -74,6 +88,13 @@ class GUI:
         self.img_repeat_active = tk.PhotoImage(file="../img/icons/repeat(active).png")
         self.img_repeat_active_hover = tk.PhotoImage(file="../img/icons/repeat(active hover).png")
 
+        self.img_volume_muted = tk.PhotoImage(file="../img/icons/volume(muted).png")
+        self.img_volume_muted_hover = tk.PhotoImage(file="../img/icons/volume(muted hover).png")
+        self.img_volume_quiet = tk.PhotoImage(file="../img/icons/volume(quiet).png")
+        self.img_volume_quiet_hover = tk.PhotoImage(file="../img/icons/volume(quiet hover).png")
+        self.img_volume_loud = tk.PhotoImage(file="../img/icons/volume(loud).png")
+        self.img_volume_loud_hover = tk.PhotoImage(file="../img/icons/volume(loud hover).png")
+
         self.btn_prev = tk.Button(self.controlsFrame,
                                   image=self.img_prev,
                                   bg=GUI.backgroundColor,
@@ -102,7 +123,13 @@ class GUI:
                                     activebackground=GUI.backgroundColor,
                                     borderwidth=0)
 
-        # Creating custom slider
+        self.btn_volume = tk.Button(self.volumeFrame,
+                                    image=self.img_volume_loud,
+                                    bg=GUI.backgroundColor,
+                                    activebackground=GUI.backgroundColor,
+                                    borderwidth=0)
+
+        # Creating custom playback slider
         self.img_slider = tk.PhotoImage('self.img_slider', width=7, height=20, master=master)
         self.__create_img_from_pixels(self.img_slider, GUI.foregroundColor)
 
@@ -110,25 +137,59 @@ class GUI:
         self.__create_img_from_pixels(self.img_slider_active, GUI.foregroundActiveColor)
 
         self.style = ttk.Style(master)
-        self.style.element_create('custom.Horizontal.Scale.slider', 'image', self.img_slider,
+        self.style.element_create('playback.Horizontal.Scale.slider', 'image', self.img_slider,
                                  ('active', self.img_slider_active))
 
-        self.style.layout('custom.Horizontal.TScale',
+        self.style.layout('playback.Horizontal.TScale',
                           [('Horizontal.Scale.trough',
                             {'expand': '1', 'sticky': 'we',
                              'children': [('Horizontal.Scale.track', {'sticky': 'we'}),
-                                          ('custom.Horizontal.Scale.slider', {'side': 'left', 'sticky': ''})]})])
+                                          ('playback.Horizontal.Scale.slider', {'side': 'left', 'sticky': ''})]})])
 
-        self.style.configure('custom.Horizontal.TScale', background=GUI.backgroundColor)
+        self.style.configure('playback.Horizontal.TScale', background=GUI.backgroundColor)
 
         self.slider_song = ttk.Scale(self.rightSideFrame,
-                                     length=300,
-                                     style='custom.Horizontal.TScale',
+                                     length=275,
+                                     style='playback.Horizontal.TScale',
                                      from_=0,
                                      to=100,
                                      orient=tk.HORIZONTAL,
-                                     value=0,
-                                     state=tk.DISABLED)
+                                     value=0)
+
+        # Volume level slider
+        self.img_slider_volume = tk.PhotoImage('self.img_slider_volume', width=12, height=7, master=master)
+        self.__create_img_from_pixels(self.img_slider_volume, GUI.foregroundColor)
+
+        self.img_slider_volume_active = tk.PhotoImage('self.img_slider_volume_active', width=12, height=7, master=master)
+        self.__create_img_from_pixels(self.img_slider_volume_active, GUI.foregroundActiveColor)
+
+        self.style = ttk.Style(master)
+        self.style.element_create('volume.Vertical.Scale.slider', 'image', self.img_slider_volume,
+                                  ('active', self.img_slider_volume_active))
+
+        self.style.layout('volume.Vertical.TScale',
+                          [('Vertical.Scale.trough',
+                            {'expand': '1', 'sticky': 'nswe',
+                             'children': [('Vertical.Scale.track', {'sticky': 'ns'}),
+                                          ('volume.Vertical.Scale.slider', {'side': 'top', 'sticky': ''})]})])
+
+        self.style.configure('volume.Vertical.TScale', background=GUI.backgroundColor)
+
+        self.slider_volume = ttk.Scale(self.volumeFrame,
+                                     length=100,
+                                     style='volume.Vertical.TScale',
+                                     from_=100,
+                                     to=0,
+                                     orient=tk.VERTICAL,
+                                     value=100)
+
+        self.volumeLabel = tk.Label(self.volumeFrame,
+                                    text="100",
+                                    font="Ubuntu 10",
+                                    width=3,
+                                    bg=GUI.backgroundColor,
+                                    fg=GUI.foregroundColor)
+
 
         self.btn_prev.bind("<Enter>", lambda event, image=self.img_prev_hover: self.on_enter(e=event, image=image))
         self.btn_prev.bind("<Leave>", lambda event, image=self.img_prev: self.on_leave(e=event, image=image))
@@ -157,7 +218,26 @@ class GUI:
 
         self.btn_repeat.grid(row=0, column=4, ipadx="2px")
 
-        self.slider_song.grid(row=2, column=0, padx=2, pady=(15, 0), sticky="we")
+        self.slider_song.grid(row=2, column=0, padx=2, pady=(15, 0))
+        self.volumeLabel.grid(row=0, column=0)
+        self.slider_volume.grid(row=1, column=0)
+        self.btn_volume.grid(row=2, column=0, pady=(3, 0))
+
+        # About button
+        self.img_about = tk.PhotoImage(file="../img/icons/about.png")
+        self.img_about_hover = tk.PhotoImage(file="../img/icons/about(hover).png")
+
+        self.btn_show_about = tk.Button(self.footerFrame,
+                                        image=self.img_about,
+                                        bg=GUI.backgroundColor,
+                                        activebackground=GUI.backgroundColor,
+                                        relief=tk.GROOVE,
+                                        bd=0)
+
+        self.btn_show_about.bind("<Enter>",
+                                 lambda event, image=self.img_about_hover: self.on_enter(e=event, image=image))
+        self.btn_show_about.bind("<Leave>", lambda event, image=self.img_about: self.on_leave(e=event, image=image))
+        self.btn_show_about.pack(side=tk.RIGHT, ipadx="1px", ipady="2px")
 
 
         # SongsBox
@@ -168,33 +248,37 @@ class GUI:
                                     yscrollcommand=self.songsListScrollbar.set,
                                     bg=GUI.songsListBackgroundColor,
                                     fg=GUI.foregroundColor,
-                                    selectbackground=GUI.backgroundColor)
+                                    selectbackground=GUI.backgroundColor,
+                                    borderwidth=0,
+                                    highlightthickness=0)
         self.songsList.pack(fill="both", expand=True)
         self.songsListScrollbar.config(command=self.songsList.yview)
 
         self.img_add_songs = tk.PhotoImage(file="../img/icons/plus.png")
         self.img_add_songs_hover = tk.PhotoImage(file="../img/icons/plus(hover).png")
-        self.img_enter_song_removing_mode = tk.PhotoImage(file="../img/icons/minus.png")
-        self.img_enter_song_removing_mode_hover = tk.PhotoImage(file="../img/icons/minus(hover).png")
+        self.img_song_removing_mode_switch = tk.PhotoImage(file="../img/icons/minus.png")
+        self.img_song_removing_mode_switch_hover = tk.PhotoImage(file="../img/icons/minus(hover).png")
         self.img_remove_selected_songs = tk.PhotoImage(file="../img/icons/trashcan.png")
         self.img_remove_selected_songs_hover = tk.PhotoImage(file="../img/icons/trashcan(hover).png")
         self.img_shuffle = tk.PhotoImage(file="../img/icons/shuffle.png")
         self.img_shuffle_hover = tk.PhotoImage(file="../img/icons/shuffle(hover).png")
 
-        self.btn_add_songs = tk.Button(self.bottomButtonsFrame,
+        self.img_search = tk.PhotoImage(file="../img/icons/search.png")
+
+        self.btn_add_songs = tk.Button(self.footerFrame,
                                        image=self.img_add_songs,
                                        bg=GUI.backgroundColor,
                                        activebackground=GUI.backgroundColor,
                                        relief=tk.GROOVE,
                                        bd=0)
 
-        self.btn_enter_song_removing_mode = tk.Button(self.bottomButtonsFrame,
-                                                      image=self.img_enter_song_removing_mode,
-                                                      bg=GUI.backgroundColor,
-                                                      activebackground=GUI.backgroundColor,
-                                                      relief=tk.GROOVE,
-                                                      bd=0)
-        self.btn_remove_selected_songs = tk.Button(self.bottomButtonsFrame,
+        self.btn_song_removing_mode_switch = tk.Button(self.footerFrame,
+                                                       image=self.img_song_removing_mode_switch,
+                                                       bg=GUI.backgroundColor,
+                                                       activebackground=GUI.backgroundColor,
+                                                       relief=tk.GROOVE,
+                                                       bd=0)
+        self.btn_remove_selected_songs = tk.Button(self.footerFrame,
                                                    image=self.img_remove_selected_songs,
                                                    bg=GUI.backgroundColor,
                                                    activebackground=GUI.backgroundColor,
@@ -208,17 +292,31 @@ class GUI:
                                      activebackground=GUI.backgroundColor,
                                      borderwidth=0)
 
+        self.labelSearch = tk.Label(self.footerFrame,
+                                    image=self.img_search,
+                                    bg=GUI.backgroundColor,
+                                    bd=0)
+
+        self.field_search = tk.Entry(self.footerFrame,
+                                     bg=GUI.songsListBackgroundColor,
+                                     fg=GUI.foregroundColor,
+                                     selectbackground=GUI.foregroundActiveColor,
+                                     selectforeground=GUI.backgroundColor,
+                                     bd=0,
+                                     relief=tk.FLAT,
+                                     width=30)
+
         self.btn_add_songs.bind("<Enter>",
                                 lambda event, image=self.img_add_songs_hover: self.on_enter(e=event, image=image))
         self.btn_add_songs.bind("<Leave>",
                                 lambda event, image=self.img_add_songs: self.on_leave(e=event, image=image))
 
-        self.btn_enter_song_removing_mode.bind("<Enter>",
-                                       lambda event, image=self.img_enter_song_removing_mode_hover: self.on_enter(e=event,
-                                                                                                          image=image))
-        self.btn_enter_song_removing_mode.bind("<Leave>",
-                                       lambda event, image=self.img_enter_song_removing_mode: self.on_leave(e=event,
-                                                                                                    image=image))
+        self.btn_song_removing_mode_switch.bind("<Enter>",
+                                                lambda event, image=self.img_song_removing_mode_switch_hover: self.on_enter(e=event,
+                                                                                                                   image=image))
+        self.btn_song_removing_mode_switch.bind("<Leave>",
+                                                lambda event, image=self.img_song_removing_mode_switch: self.on_leave(e=event,
+                                                                                                             image=image))
 
         self.btn_remove_selected_songs.bind("<Enter>",
                                        lambda event, image=self.img_remove_selected_songs_hover: self.on_enter(e=event,
@@ -229,30 +327,28 @@ class GUI:
                                                    e=event,
                                                    image=image))
 
+        self.songsQtyLabel = tk.Label(self.footerFrame,
+                                      text="0 song(s)",
+                                      font="Ubuntu 10",
+                                      bg=GUI.backgroundColor,
+                                      fg=GUI.foregroundColor)
+
         self.btn_shuffle.bind("<Enter>",
                               lambda event, image=self.img_shuffle_hover: self.on_enter(e=event, image=image))
         self.btn_shuffle.bind("<Leave>", lambda event, image=self.img_shuffle: self.on_leave(e=event, image=image))
 
+        self.btn_volume.bind("<Enter>",
+                              lambda event, image=self.img_volume_loud_hover: self.on_enter(e=event, image=image))
+        self.btn_volume.bind("<Leave>", lambda event, image=self.img_volume_loud: self.on_leave(e=event, image=image))
+
         self.btn_add_songs.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
-        self.btn_enter_song_removing_mode.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
+        self.btn_song_removing_mode_switch.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
         self.btn_remove_selected_songs.pack(side=tk.LEFT, ipadx="5px", ipady="2px")
         self.btn_shuffle.grid(row=0, column=3, ipadx="2px", padx=("20px", 0))
 
-        # About button
-        self.img_about = tk.PhotoImage(file="../img/icons/about.png")
-        self.img_about_hover = tk.PhotoImage(file="../img/icons/about(hover).png")
-
-        self.btn_show_about = tk.Button(self.bottomButtonsFrame,
-                                        image=self.img_about,
-                                        bg=GUI.backgroundColor,
-                                        activebackground=GUI.backgroundColor,
-                                        relief=tk.GROOVE,
-                                        bd=0)
-
-        self.btn_show_about.bind("<Enter>",
-                                 lambda event, image=self.img_about_hover: self.on_enter(e=event, image=image))
-        self.btn_show_about.bind("<Leave>", lambda event, image=self.img_about: self.on_leave(e=event, image=image))
-        self.btn_show_about.pack(side=tk.RIGHT, ipadx="1px", ipady="2px")
+        self.labelSearch.pack(side=tk.LEFT, padx=(5, 0))
+        self.field_search.pack(side=tk.LEFT, padx=5)
+        self.songsQtyLabel.pack(side=tk.RIGHT, padx=(0, 5))
 
     def __prepare_cover_image_placeholder(self):
         cover_raw_image = Image.open("../img/cover placeholder.png")

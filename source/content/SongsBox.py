@@ -12,23 +12,50 @@ class SongsBox:
 
         self.songsListSize = 0
 
-        self.currentSongIndex = 0
-        self.songsFullPaths = ()
+        self.currentSongIndex = -1
+        self.songsFullPaths = []
         self.currentSongFullPath = ""
 
         self.isSongRemovingMode = False
 
+        self.query = tk.StringVar()
+
         self.__bind_songs_box_event()
-        self.__give_commands_to_buttons()
+        self.__bind_search_field_event()
+        self.__give_commands_to_widgets()
 
     def __bind_songs_box_event(self):
         self.gui.songsList.bind("<ButtonRelease-1>", self.__play_selected_song)
 
     def __play_selected_song(self, e):
         self.playbackControls.execute_preparation_actions_before_playing()
-        self.currentSongIndex = e.widget.curselection()[0]
-        self.__get_current_song_full_path()
+
+        selected_song_name = self.gui.songsList.get(e.widget.curselection()[0])
+        for path in self.songsFullPaths:
+            if selected_song_name in path:
+                self.currentSongIndex = self.songsFullPaths.index(path)
+                self.currentSongFullPath = path
+
         self.playbackControls.play_selected_song()
+
+        self.update_song_qty_label()
+
+    def __bind_search_field_event(self):
+        self.gui.field_search.bind("<KeyRelease>", lambda event: self.__search_songs_from_entry(event))
+
+    def __search_songs_from_entry(self, e):
+        items_list = self.get_song_names_from_paths(self.songsFullPaths)
+        self.gui.songsList.delete(0, tk.END)
+
+        query_result = [item for item in items_list if self.query.get() in item]
+
+        self.gui.songsList.insert(tk.END, *query_result)
+
+        if len(self.query.get()) == 0:
+            for item in items_list:
+                if self.songMetadata.songTitle in item:
+                    self.gui.songsList.activate(items_list.index(item))
+                    self.gui.songsList.selection_set(items_list.index(item))
 
     def __get_current_song_full_path(self):
         for path in self.songsFullPaths:
@@ -36,37 +63,39 @@ class SongsBox:
                 self.currentSongFullPath = path
                 break
 
-    def __give_commands_to_buttons(self):
+    def __give_commands_to_widgets(self):
         self.gui.btn_add_songs.config(command=self.__add_songs)
-        self.gui.btn_enter_song_removing_mode.config(command=self.enter_song_removing_mode)
+        self.gui.btn_song_removing_mode_switch.config(command=self.song_removing_mode_switch)
         self.gui.btn_remove_selected_songs.config(command=self.__remove_selected_songs)
         self.gui.btn_shuffle.config(command=self.shuffle_songs)
+
+        self.gui.field_search.config(textvariable=self.query)
 
     def __add_songs(self):
         songs_new = filedialog.askopenfilenames(filetypes=((".mp3", "*.mp3"),))
         if len(songs_new) > 0:
             for song in songs_new:
-                if song in self.songsFullPaths:
+                if song in self.songsFullPaths or song[-3:] != "mp3":
                     songs_new_list = list(songs_new)
                     songs_new_list.remove(song)
                     songs_new = tuple(songs_new_list)
 
             self.songsFullPaths += songs_new
-            songs_name_only = [name[name.rfind("/") + 1:-4] for name in songs_new]
+            songs_name_only = self.get_song_names_from_paths(songs_new)
             self.gui.songsList.insert(tk.END, *songs_name_only)
             self.songsListSize += len(songs_new)
 
-    # def remove_all_songs(self):
-    #     self.gui.songsList.delete(0, tk.END)
-    #     self.gui.place_play_button()
-    #
-    #     self.songsFullPaths = ()
-    #     self.songsListSize = 0
-    #     self.currentSongIndex = 0
-    #
-    #     self.songMetadata.clear_song_metadata()
-    #
-    #     self.playbackControls.clear_playback()
+        self.update_song_qty_label()
+
+    def get_song_names_from_paths(self, songs_list):
+        songs_name_only = [name[name.rfind("/") + 1:-4] for name in songs_list]
+        return songs_name_only
+
+    def update_song_qty_label(self):
+        if len(self.gui.songsList.curselection()) == 0 and self.currentSongIndex == -1 or self.songsListSize == 0:
+            self.gui.songsQtyLabel.config(text=f"{str(self.songsListSize)} song(s)")
+        else:
+            self.gui.songsQtyLabel.config(text=f"{str(self.currentSongIndex+1)} of {str(self.songsListSize)} song(s)")
 
     def shuffle_songs(self):
         songs_full_paths_list = list(self.songsFullPaths)
@@ -78,7 +107,7 @@ class SongsBox:
             songs_full_paths_list.insert(0, self.currentSongFullPath)
             self.currentSongIndex = 0
 
-        self.songsFullPaths = tuple(songs_full_paths_list)
+        self.songsFullPaths = songs_full_paths_list
 
         songs_names_list = [name[name.rfind("/") + 1:-4] for name in songs_full_paths_list]
 
@@ -86,9 +115,9 @@ class SongsBox:
         self.gui.songsList.insert(tk.END, *songs_names_list)
 
         self.select_current_index()
+        self.update_song_qty_label()
 
     def check_if_song_is_borderline(self):
-        # NEEDS REFACTORING
         if self.currentSongIndex == 0 and self.songsListSize == 1:
             return -1
         if self.currentSongIndex == 0 and self.songsListSize > 1:
@@ -96,21 +125,23 @@ class SongsBox:
         if self.currentSongIndex + 1 == self.songsListSize:
             return 1
 
-    def enter_song_removing_mode(self):
+    def song_removing_mode_switch(self):
         if not self.isSongRemovingMode:
             self.isSongRemovingMode = True
             self.gui.songsList.config(selectmode=tk.EXTENDED)
             self.gui.songsList.unbind("<ButtonRelease-1>")
 
-            self.gui.btn_enter_song_removing_mode.config(bg="#6E6E6E")
+            self.gui.btn_song_removing_mode_switch.config(bg="#6E6E6E")
             self.gui.btn_remove_selected_songs.config(state=tk.NORMAL)
         else:
             self.isSongRemovingMode = False
             self.gui.songsList.config(selectmode=tk.BROWSE)
             self.__bind_songs_box_event()
 
-            self.gui.btn_enter_song_removing_mode.config(bg=GUI.GUI.backgroundColor)
+            self.gui.btn_song_removing_mode_switch.config(bg=GUI.GUI.backgroundColor)
             self.gui.btn_remove_selected_songs.config(state=tk.DISABLED)
+
+            self.select_current_index()
 
     def __remove_selected_songs(self):
         selected_songs_indices = self.gui.songsList.curselection()
@@ -132,12 +163,28 @@ class SongsBox:
         self.songsFullPaths = tuple(songs_full_paths_list)
         self.songsListSize = len(self.songsFullPaths)
 
+        if self.songsListSize == 0:
+            self.currentSongIndex = -1
+
         for song_title in selected_songs_titles:
             all_songs_titles.remove(song_title)
 
         self.gui.songsList.delete(0, tk.END)
         self.gui.songsList.insert(tk.END, *all_songs_titles)
-        self.select_current_index()
+
+        if self.playbackControls.isSongLoaded:
+            self.__find_song_by_name()
+        if self.currentSongIndex != -1:
+            self.select_current_index()
+
+        self.update_song_qty_label()
+
+        print(self.currentSongIndex)
+
+    def __find_song_by_name(self):
+        for item in self.gui.songsList.get(0, tk.END):
+            if self.songMetadata.songTitle in item:
+                self.currentSongIndex = self.gui.songsList.get(0, tk.END).index(item)
 
     def select_current_index(self):
         self.gui.songsList.selection_clear(0, tk.END)

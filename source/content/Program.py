@@ -33,4 +33,3 @@ class Program:
     def __prepare_to_exit(self):
         self.currentSongMetadata.cancel_all_cycles()
         self.playbackControls.cancel_all_cycles()
-

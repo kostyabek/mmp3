@@ -12,6 +12,7 @@ class SongMetadata:
 
         self.songTag = None
         self.songFullTitle = ""
+        self.songTitle = ""
         self.songRawPlaytime = 0
         self.songFormattedPlaytime = None
         self.songRawLength = 0
@@ -20,51 +21,43 @@ class SongMetadata:
         self.coverRawImage = None
 
         self.songNameCycleFlag = None
-        self.wasLongTitle = False
         self.wasSliderUsed = False
 
     def read_song_metadata(self, song_full_path):
-        self.stop_song_title_cycle()
+        self.cancel_all_cycles()
+
         try:
             self.songTag = stg.read_tag(song_full_path)
         except stg.errors.NoTagError:
-            self.songFullTitle = self.__build_song_full_title("", self.gui.songsList.get(self.songsBox.currentSongIndex))
+            self.songTitle = song_full_path[song_full_path.rfind("/") + 1:-4]
+            self.songFullTitle = self.__build_song_full_title("", self.songTitle)
         else:
-            self.songFullTitle = self.__build_song_full_title(self.songTag.artist, self.songTag.title)
+            self.songTitle = self.songTag.title
+            self.songFullTitle = self.__build_song_full_title(self.songTag.artist, self.songTitle)
 
         self.gui.songNameLabel.configure(text=self.songFullTitle)
 
-        self.__start_song_title_cycler()
+        if len(self.songFullTitle) > 27:
+            self.__cycle_spin_song_full_title()
 
         self.__get_song_cover_image()
         self.get_song_length()
 
     def stop_song_title_cycle(self):
-        if self.wasLongTitle:
+        if self.songNameCycleFlag is not None:
             self.gui.master.after_cancel(self.songNameCycleFlag)
 
     def __build_song_full_title(self, artist, name):
-        if self.__check_if_tag_title_not_empty():
-            return artist + " - " + name + "  "
-        else:
-            return self.gui.songsList.get(self.songsBox.currentSongIndex) + "  "
-
-    def __check_if_tag_title_not_empty(self):
-        if len(self.songTag.artist) == 0 or len(self.songTag.title) == 0:
-            return False
-        return True
-
-    def __start_song_title_cycler(self):
-        self.wasLongTitle = True
-        self.songNameCycleFlag = self.gui.master.after(1000, self.__cycle_spin_song_full_title)
+        if len(artist) == 0:
+            return f"{name}  "
+        return f"{artist} - {name}  "
 
     def __cycle_spin_song_full_title(self):
-        if len(self.songFullTitle) > 25:
-            self.songFullTitle = self.songFullTitle[-1] + self.songFullTitle[:-1]
+        self.songFullTitle = self.songFullTitle[-1] + self.songFullTitle[:-1]
 
-            self.gui.songNameLabel.configure(text=self.songFullTitle)
+        self.gui.songNameLabel.configure(text=self.songFullTitle)
 
-            self.gui.master.after(1000, self.__cycle_spin_song_full_title)
+        self.songNameCycleFlag = self.gui.master.after(1000, self.__cycle_spin_song_full_title)
 
     def __get_song_cover_image(self):
         if not self.__check_if_tag_has_image():
@@ -141,3 +134,13 @@ class SongMetadata:
     def cancel_all_cycles(self):
         if self.songNameCycleFlag is not None:
             self.gui.master.after_cancel(self.songNameCycleFlag)
+
+    def get_title_from_tag(self, path):
+        try:
+            song_tag = stg.read_tag(path)
+        except stg.errors.NoTagError:
+            song_title = path[path.rfind("/") + 1:-4]
+        else:
+            song_title = song_tag.title
+
+        return song_title
