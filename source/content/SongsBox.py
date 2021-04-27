@@ -179,8 +179,6 @@ class SongsBox:
 
         self.update_song_qty_label()
 
-        print(self.currentSongIndex)
-
     def __find_song_by_name(self):
         for item in self.gui.songsList.get(0, tk.END):
             if self.songMetadata.songTitle in item:
